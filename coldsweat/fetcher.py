@@ -357,7 +357,8 @@ def fetch_feed(feed, add_entries=False):
         }
 
         # Save to database
-        Entry.create(**d)
+        e = Entry.create(**d)
+        hooks('entry_fetched')(e)
 
         log.debug(u"added entry %s from %s" % (guid, netloc))
 

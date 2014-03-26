@@ -13,6 +13,7 @@ __license__ = 'MIT'
 
 from os import path
 from ConfigParser import RawConfigParser
+import imp
 import logging
 from webob.exc import status_map
 
@@ -57,6 +58,37 @@ for module in 'peewee', 'requests':
         
 # Shared logger instance
 log = logging.getLogger()
+
+# ------------------------------------------------------
+# Load plugins
+# ------------------------------------------------------
+
+HOOKS = {}
+
+def hook(name):
+    '''Decorator'''
+    def _(func):
+        HOOKS.setdefault(name, []).append(func)
+        return func
+    return _
+
+if config.has_option('plugins', 'import'):
+    for name in config.get('plugins', 'import').split(','):
+        plugin_dir = path.join(installation_dir, 'plugins')
+        fp, pathname, description = imp.find_module(name, [plugin_dir])
+        try:
+            imp.load_module(name, fp, pathname, description)
+        finally:
+            if fp:
+                fp.close()
+
+class hooks(tuple):
+    def __new__(cls, name):
+        return tuple.__new__(cls, HOOKS.get(name, []))
+
+    def __call__(self, *args):
+        for func in self:
+            func(*args)
 
 # ------------------------------------------------------
 # Custom error codes 9xx & exceptions 
